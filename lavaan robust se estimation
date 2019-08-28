@@ -1,0 +1,45 @@
+source("C:\\Users\\menas\\Documents\\Du_lab\\rem012_lnorm\\rbst_fitmodel.R")
+
+library(lavaan)
+
+datasets  <- rep(list(NA),15)
+
+s.fits    <- matrix(NA,nrow=15,ncol=6)
+colnames(s.fits) <- c("standard","exp.str0","exp.uns0","obs.str1","obs.uns1","obs.hess")
+
+i.fits      <- matrix(NA,nrow=15,ncol=6)
+colnames(i.fits) <- c("standard","exp.str0","exp.uns0","obs.str1","obs.uns1","obs.hess")
+
+mod <- "i =~ 1*t1 + 1*t2 + 1*t3\ni ~ iint*1\ns =~ 0*t1 + 1*t2 + 2*t3\ns ~ sint*1\ni ~~ s2i*i\ns ~~ s2s*s\ni~~is*s\nt1~~s2e*t1\nt2~~s2e*t2\nt3~~s2e*t3\ns2e > 0\ns2i > 0\ns2s > 0"
+
+
+for(i in 1:15){
+  print(i)
+  datasets[[i]] <- read.csv(paste("rem0.data_rep_",i,".csv",sep=""),row.names = NULL)
+  std.fit       <- lavaan(data = datasets[[i]],
+                          model = mod,
+                          estimator = "ML",
+                          information = "expected",
+                          h1.information = "structured")
+  
+  std.estims    <- parameterestimates(std.fit)
+  std.s         <- std.estims[std.estims$label == "sint", "est"]
+  std.i         <- std.estims[std.estims$label == "iint", "est"]
+  
+  rbst.fit      <- robust.fitmodel(Timepoint = 3,
+                                   d = datasets[[1]],
+                                   m = mod,
+                                   output = "fit")
+  rbst.s        <- rep(NA,5)
+  rbst.i        <- rep(NA,5)
+  
+  for(j in 1:5){
+    rbst.estims <- parameterestimates(rbst.fit[[j]],ci=FALSE)
+    
+    rbst.s[j]   <- rbst.estims[rbst.estims$label == "sint","est"]
+    rbst.i[j]   <- rbst.estims[rbst.estims$label == "iint","est"]
+  }
+
+  s.fits[i,] <- c(std.s,rbst.s)
+  i.fits[i,] <- c(std.i,rbst.i)
+}
